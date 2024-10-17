@@ -31,7 +31,6 @@
         <li>한국에너지공단 인턴 (2021.03 ~ 2021. 06)</li>
         <li>한국에너지공단 인턴 (2020.03 ~ 2020. 06)</li>
         <li>진접농업협동조합  (2018.03 ~ 2019.03)</li>
-</p>
     </div>
     <div style="flex: 1; padding: 10px;">
         <h2>📚 Education</h2>
@@ -46,36 +45,56 @@
 역량의 전문성에 따라 **상 · 중 · 하** 수준으로 분류하였습니다. 각 항목을 누르면 상세 내용을 확인할 수 있습니다. 
 
 **업무 활용**
-
-- **Java**
-- **Spring**
-- **Spring Boot**
-- **JSP**
-- **Javascript**
-- **MyBatis**
-- **iBatis**
-- **Oracle**
-- **MySQL**
-- **Eclipse**
-- **Intellij**
-- **Git**
-
-- **Spring Cloud**
-    - **Config**
-    - **Eureka**
-    - **Gateway**
-    - **OpenFeign**
-- **Spring Webflux**
-- **Spring Data JPA**
-- **Elastic Search**
-- **HTML5 + CSS**
-- **MSA**
-- **Kubernetes**
-- **Docker**
-- **Redis**
-- **Electron**
-- **Vue**
-- **VS Code**
+<div style="display: flex;">
+    <div style="flex: 1; padding: 10px; 
+                font-weight: 900;
+                color: rgba(51, 126, 169, 1);
+                fill: rgba(51, 126, 169, 1);">
+        <li>Java</li>
+        <li>Spring</li>
+        <li>Spring Boot</li>
+        <li>JSP</li>
+        <li>Javascript</li>
+        <li>MyBatis</li>
+        <li>iBatis</li>
+        <li>Oracle</li>
+        <li>MySQL</li>
+        <li>Eclipse</li>
+        <li>Intellij</li>
+        <li>Git</li>
+    </div>
+    <div style="flex: 1; padding: 10px; 
+                font-weight: 900;
+                color: rgba(203, 145, 47, 1);
+                fill: rgba(203, 145, 47, 1)">
+        <details>
+            <summary>Spring Cloud</summary>
+            <ul>
+                <li>Config</li>
+                <li>Eureka</li>
+                <li>Gateway</li>
+                <li>OpenFeign</li>
+            </ul>
+        </details>
+        <li>Spring Webflux</li>
+        <li>Spring Data JPA</li>
+        <li>Elastic Search</li>
+        <li>HTML5 + CSS</li>
+        <li>MSA</li>
+        <li>Kubernetes</li>
+        <li>Docker</li>
+        <li>Redis</li>
+        <li>Electron</li>
+        <li>Vue</li>
+        <li>VS Code</li>
+    </div>
+    <div style="flex: 1; padding: 10px;">
+        <li>Elastic Search 스터디(2024.08 ~)</li>
+        <li>JAVA 스터디(2023.07 ~ 2024.02)</li>
+        <li>MSA 스터디 (2023. 01 ~ 2023.06)</li>
+        <li>비트교육센터 JAVA 전문가 과정 (2021. 10. ~2022. 04)</li>
+    </div>
+</div>
 
 **태도**
 
