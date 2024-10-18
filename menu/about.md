@@ -89,36 +89,40 @@
         <li>VS Code</li>
     </div>
     <div style="flex: 1; padding: 10px;">
-        <li>Elastic Search 스터디(2024.08 ~)</li>
-        <li>JAVA 스터디(2023.07 ~ 2024.02)</li>
-        <li>MSA 스터디 (2023. 01 ~ 2023.06)</li>
-        <li>비트교육센터 JAVA 전문가 과정 (2021. 10. ~2022. 04)</li>
+        <li>습득력</li>
+        <li>이해력</li>
+        <li>성실함</li>
+        <li>꼼꼼함</li>
+        <li>의사소통</li>
+        <li>리더십</li>
     </div>
 </div>
 
-**태도**
+<div style="display: flex;">
+    <div style="flex: 1; padding: 10px;">
+        <h2>📑 Certificate</h2>
+        <li>정보처리기사 (2022.09.02.)</li>
+        <li>한국사능력검정시험 1급 (2020.10.02.)</li>
+        <li>컴퓨터활용능력 1급 (2020.06.02.)</li>
+        <li>전산회계 1급</li>
+    </div>
+    <div style="flex: 1; padding: 10px;">
+        <h2>📝 Blog</h2>
+        <li>
+            <a  href="https://advanc2d.notion.site/  a7dcc6e5c5ef46529eec2f132cc67cc2">
+                [나의 학습 공간]
+            </a>
+        </li>
+    </div>
+    <div style="flex: 1; padding: 10px;">
+        <h2>🗃 Github</h2>
+        <li>
+            <a  href="https://github.com/Advanc2d">
+                [Advanc2d]
+            </a>
+        </li>
+    </div>
+</div>
 
-- **습득력**
-- **성실함**
-- **이해력**
-- **꼼꼼함**
-- **의사소통**
-- **리더십**
 
-## 📑 Certificate
-- 정보처리기사 (2022.09.03.)
-- 한국사능력검정시험 1급 (2020.10.02.)
-- 컴퓨터활용능력 1급 (2020.06.02.)
-- 전산회계 1급
-- 기업회계 3급
-- 한자급수자격검정 3급
-
-## 📝 Blog
-[나의 학습 공간](https://advanc2d.notion.site/a7dcc6e5c5ef46529eec2f132cc67cc2)
-
-[feat. 자린이 : 네이버 블로그](https://blog.naver.com/advanc2d)
-
-## 🗃 Github
-[Advanc2d - Overview](https://github.com/Advanc2d)
-
-# 😄 감사합니다.
+### 😄 감사합니다.
