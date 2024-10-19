@@ -1,4 +1,4 @@
-# About Park Hyun Min
+# Park Hyun Min
 
 ## 안녕하세요. Backend 개발자 박현민입니다.
 
