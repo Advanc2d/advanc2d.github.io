@@ -14,9 +14,9 @@ const users = [
   {
     id: 0, // default author
     username: "advanc2d",
-    company: "weniv",
-    position: "CEO",
-    img: "img/user/profile-gray.png",
+    company: "hyunki",
+    position: "CTO",
+    img: "img/user/profile-gary.png",
   },
 ];
 
