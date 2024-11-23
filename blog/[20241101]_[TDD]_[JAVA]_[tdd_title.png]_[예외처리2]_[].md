@@ -7,6 +7,9 @@
 
 ---
 
+## **TDD 란?**
+- `Test Driven Development`, `테스트 주도 개발`이라고 한다.
+- 반복 테스트를 이용한 소프트웨어 방법론으로 작은 단위의 테스트 케이스를 작성하고 이를 통과하는 코드를 추가하는 단계를 반복하여 구현해 나간다.
 ## **Project 생성**
 
 ![tdd1.png](../img/tdd1.png)
@@ -975,4 +978,309 @@ class ProductAdapter implements ProductPort {
                 .orElseThrow(() -> new IllegalArgumentException("상품이 존재하지 않습니다."));
     }
 }
-``
+```
+
+
+## **6. 상품 조회 기능 API 테스트 전환**
+### **6-0. ProductServiceTest 삭제**
+- 테스트 파일 ProductServiceTest.java 삭제
+
+### **6-1. ProductApiTest 수정**
+- ProductServiceTest.java
+```java
+package com.example.tdd.product;
+
+import com.example.tdd.ApiTest;
+import io.restassured.RestAssured;
+import io.restassured.response.ExtractableResponse;
+import io.restassured.response.Response;
+import org.junit.jupiter.api.Test;
+import org.springframework.http.HttpStatus;
+
+import static org.assertj.core.api.Assertions.assertThat;
+
+public class ProductApiTest extends ApiTest {
+
+  @Test
+  void 상품등록() {
+    final var request = ProiductSteps.상품등록요청_생성();
+
+    final var response = ProiductSteps.상품등록요청(request);
+
+    assertThat(response.statusCode()).isEqualTo(HttpStatus.CREATED.value());
+  }
+
+  @Test
+  void 상품조회() {
+
+    ProiductSteps.상품등록요청(ProiductSteps.상품등록요청_생성());
+
+    Long productId = 1L;
+
+    final ExtractableResponse<Response> response = RestAssured.given().log().all()
+            .when()
+            .get("/products/{productId}", productId)
+            .then().log().all()
+            .extract();
+
+    assertThat(response.statusCode()).isEqualTo(HttpStatus.OK.value());
+    assertThat(response.jsonPath().getString("name")).isEqualTo("상품명");
+
+  }
+}
+```
+
+### **6-2. ProductSteps로 상품조회요청 메소드 이동**
+```java
+package com.example.tdd.product;
+
+import com.example.tdd.ApiTest;
+import io.restassured.RestAssured;
+import io.restassured.response.ExtractableResponse;
+import io.restassured.response.Response;
+import org.springframework.http.MediaType;
+
+public class ProductSteps extends ApiTest {
+  public static ExtractableResponse<Response> 상품등록요청(final AddProductRequest request) {
+    return RestAssured.given().log().all()         // 요청 로그를 남김
+            .contentType(MediaType.APPLICATION_JSON_VALUE)
+            .body(request)
+            .when()
+            .post("/products")
+            .then()
+            .log().all().extract();
+  }
+
+  public static AddProductRequest 상품등록요청_생성() {
+    final String name = "상품명";
+    final int price = 1000;
+    final DiscountPolicy discountPolicy = DiscountPolicy.NONE;
+
+    return new AddProductRequest(name, price, discountPolicy);
+  }
+
+  public static ExtractableResponse<Response> 상품조회요청(Long productId) {
+    final ExtractableResponse<Response> response = RestAssured.given().log().all()
+            .when()
+            .get("/products/{productId}", productId)
+            .then().log().all()
+            .extract();
+    return response;
+  }
+}
+```
+
+## **7. POJO 상품 수정 기능 구현**
+
+### **7-1.UpdateProductRequest 추가**
+```java
+package com.example.tdd.product;
+
+import org.springframework.util.Assert;
+
+record UpdateProductRequest(String name, int price, DiscountPolicy discountPolicy) {
+    UpdateProductRequest {
+        Assert.hasText(name, "상품명은 필수입니다.");
+        Assert.isTrue(price > 0, "상품 가격은 0보다 커야 합니다.");
+        Assert.notNull(discountPolicy, "상품 정책은 필수입니다.");
+    }
+}
+```
+### **7-2. ProductTest 추가**
+- ProductTest.java
+```java
+package com.example.tdd.product;
+
+import org.junit.jupiter.api.Test;
+
+import static org.assertj.core.api.Assertions.assertThat;
+
+class ProductTest {
+  @Test
+  void update() {
+    final Product product = new Product("상품명", 1000, DiscountPolicy.NONE);
+
+    product.update("상품 수정", 2000, DiscountPolicy.NONE);
+
+    assertThat(product.getName()).isEqualTo("상품 수정");
+    assertThat(product.getPrice()).isEqualTo(2000);
+  }
+}
+```
+
+### **7-2. Product 추가**
+- Product.java
+```java
+package com.example.tdd.product;
+
+import lombok.AccessLevel;
+import lombok.Getter;
+import lombok.NoArgsConstructor;
+import org.springframework.util.Assert;
+
+import javax.persistence.*;
+
+@Entity
+@Table(name = "products")
+@Getter
+@NoArgsConstructor(access = AccessLevel.PROTECTED)
+class Product {
+    @Id
+    @GeneratedValue(strategy = GenerationType.IDENTITY)
+    private Long id;
+
+    private String name;
+
+    private int price;
+
+    private DiscountPolicy discountPolicy;
+
+    public Product(final String name, final int price, final DiscountPolicy discountPolicy) {
+        Assert.hasText(name, "상품명은 필수입니다.");
+        Assert.isTrue(price > 0, "상품 가격은 0보다 커야합니다.");
+        Assert.notNull(discountPolicy, "할인 정책은 필수입니다.");
+        this.name = name;
+        this.price = price;
+        this.discountPolicy = discountPolicy;
+    }
+
+    public void update(final String name, final int price, final DiscountPolicy discountPolicy) {
+        Assert.hasText(name, "상품명은 필수입니다.");
+        Assert.isTrue(price > 0, "상품 가격은 0보다 커야합니다.");
+        Assert.notNull(discountPolicy, "할인 정책은 필수입니다.");
+        this.name = name;
+        this.price = price;
+        this.discountPolicy = discountPolicy;
+    }
+}
+```
+
+### **7-3. ProductTest 추가**
+- ProductTest.java
+```java
+package com.example.tdd.product;
+
+import org.junit.jupiter.api.Test;
+
+import static org.assertj.core.api.Assertions.assertThat;
+
+class ProductTest {
+  @Test
+  void update() {
+    final Product product = new Product("상품명", 1000, DiscountPolicy.NONE);
+
+    product.update("상품 수정", 2000, DiscountPolicy.NONE);
+
+    assertThat(product.getName()).isEqualTo("상품 수정");
+    assertThat(product.getPrice()).isEqualTo(2000);
+  }
+}
+```
+
+### **7.4 ProductService 추가**
+- upateProduct 메소드 추가
+```java
+package com.example.tdd.product;
+
+import org.springframework.http.HttpStatus;
+import org.springframework.http.ResponseEntity;
+import org.springframework.transaction.annotation.Transactional;
+import org.springframework.web.bind.annotation.*;
+
+@RestController
+@RequestMapping("/products")
+class ProductService {
+    private final ProductPort productPort;
+
+    ProductService(ProductPort productPort) {
+        this.productPort = productPort;
+    }
+
+    @PostMapping
+    @Transactional
+    public ResponseEntity addProduct(@RequestBody final AddProductRequest request) {
+        final Product product = new Product(request.name(), request.price(), request.discountPolicy());
+
+        productPort.save(product);
+
+        return ResponseEntity.status(HttpStatus.CREATED).build();
+    }
+
+    @GetMapping("/{productId}")
+    public ResponseEntity<GetProductResponse> getProduct(@PathVariable Long productId) {
+        final Product product = productPort.getProduct(productId);
+
+        GetProductResponse response = new GetProductResponse(
+                product.getId(),
+                product.getName(),
+                product.getPrice(),
+                product.getDiscountPolicy()
+        );
+
+        return ResponseEntity.ok(response);
+    }
+
+    public void updateProduct(Long productId, UpdateProductRequest request) {
+        final Product product = productPort.getProduct(productId);
+        product.update(request.name(), request.price(), request.discountPolicy());
+
+        productPort.save(product);
+    }
+}
+```
+### **7-*. ProductServiceTest 추가**
+- 테스트 파일 ProductServiceTest.java 추가
+```java
+package com.example.tdd.product;
+
+import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.extension.ExtendWith;
+import org.mockito.Mockito;
+import org.mockito.junit.jupiter.MockitoExtension;
+
+import static org.assertj.core.api.Assertions.assertThat;
+
+@ExtendWith(MockitoExtension.class)
+class ProductServiceTest {
+
+    private ProductPort productPort;
+    private ProductService productService;
+
+    @BeforeEach
+    void setUp() {
+        productPort = Mockito.mock(ProductPort.class);
+        productService = new ProductService(productPort);
+    }
+
+    @Test
+    void 상품수정() {
+        final Long productId = 1L;
+        final UpdateProductRequest request = new UpdateProductRequest("상품 수정", 2000, DiscountPolicy.NONE);
+        final Product product = new Product("상품명", 1000, DiscountPolicy.NONE);
+        Mockito.when(productPort.getProduct(productId)).thenReturn(product);
+
+        productService.updateProduct(productId, request);
+
+        assertThat(product.getName()).isEqualTo("상품 수정");
+        assertThat(product.getPrice()).isEqualTo(2000);
+    }
+}
+```
+
+## **8. 상품 수정 기능 스프링 부트 테스트 전환**
+
+### **8-1.UpdateProductRequest 추가**
+```java
+package com.example.tdd.product;
+
+import org.springframework.util.Assert;
+
+record UpdateProductRequest(String name, int price, DiscountPolicy discountPolicy) {
+    UpdateProductRequest {
+        Assert.hasText(name, "상품명은 필수입니다.");
+        Assert.isTrue(price > 0, "상품 가격은 0보다 커야 합니다.");
+        Assert.notNull(discountPolicy, "상품 정책은 필수입니다.");
+    }
+}
+```
