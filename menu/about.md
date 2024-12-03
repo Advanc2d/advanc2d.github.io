@@ -34,6 +34,19 @@
         <li>MSA 스터디 (2023. 01 ~ 2023.06)</li>
         <li>비트교육센터 JAVA 전문가 과정 (2021. 10. ~2022. 04)</li>
     </div>
+    <div style="flex: 1; padding: 10px;">
+        <h2>🏆 Awards</h2>
+        <li>
+            <a href="https://www.oss.kr/dev_competition_notice/show/6ce1d19e-7af8-4247-bbf3-d1c4ad55edb3">
+                2024 공개 SW 개발자 대회 대상(장관상)
+            </a>
+        </li>
+        <li>
+            <a href="https://www.kosta.or.kr/notice/?q=YToyOntzOjEyOiJrZXl3b3JkX3R5cGUiO3M6MzoiYWxsIjtzOjQ6InBhZ2UiO2k6MTt9&bmode=view&idx=122905987&t=board">
+                2024 대한민국 SW 기술 및 아키텍처 대상 대상(장관상)
+            </a>
+        </li>
+    </div>
 </div>
 
 # ⚒️ Skills
