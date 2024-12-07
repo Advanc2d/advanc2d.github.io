@@ -1284,3 +1284,123 @@ record UpdateProductRequest(String name, int price, DiscountPolicy discountPolic
     }
 }
 ```
+
+
+## **9. 상품 수정 기능 API 테스트 전환**
+
+### **9-1. ProductSteps 상품수정요청 메소드 추출**
+
+```java
+package com.example.tdd.product;
+
+import com.example.tdd.ApiTest;
+import io.restassured.RestAssured;
+import io.restassured.response.ExtractableResponse;
+import io.restassured.response.Response;
+import org.springframework.http.MediaType;
+
+public class ProductSteps extends ApiTest {
+
+  public static UpdateProductRequest 상품수정요청_생성() {
+    return new UpdateProductRequest("상품 수정", 2000, DiscountPolicy.NONE);
+  }
+}
+
+```
+
+### **9-2. ProductApiTest 상품수정 테스트 추가**
+
+```java
+package com.example.tdd.product;
+
+import com.example.tdd.ApiTest;
+import io.restassured.RestAssured;
+import io.restassured.response.ExtractableResponse;
+import io.restassured.response.Response;
+import org.junit.jupiter.api.Test;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.http.HttpStatus;
+import org.springframework.http.MediaType;
+
+import static org.assertj.core.api.Assertions.assertThat;
+
+public class ProductApiTest extends ApiTest {
+
+  @Autowired
+  ProductRepository productRepository;
+
+  void 상품수정() {
+    ProductSteps.상품등록요청(ProductSteps.상품등록요청_생성());
+    final long productId = 1L;
+
+    final ExtractableResponse<Response> response = RestAssured.given().log().all()
+            .contentType(MediaType.APPLICATION_JSON_VALUE)
+            .body(ProductSteps.상품수정요청_생성())
+            .when()
+            .patch("/products/{productId}", productId)
+            .then()
+            .log().all().extract();
+
+    assertThat(response.statusCode()).isEqualTo(HttpStatus.OK.value());
+    assertThat(productRepository.findById(1L).get().getName()).isEqualTo("상품 수정");
+  }
+}
+``` 
+
+### **9-3. ProductService.java PatchMapping 추가**
+```java
+package com.example.tdd.product;
+
+import org.springframework.http.HttpStatus;
+import org.springframework.http.ResponseEntity;
+import org.springframework.transaction.annotation.Transactional;
+import org.springframework.web.bind.annotation.*;
+
+@RestController
+@RequestMapping("/products")
+class ProductService {
+  private final ProductPort productPort;
+
+  ProductService(ProductPort productPort) {
+    this.productPort = productPort;
+  }
+
+  @PatchMapping("/{productId}")
+  @Transactional
+  public ResponseEntity<Void> updateProduct(@PathVariable final Long productId,
+                                            @RequestBody final UpdateProductRequest request) {
+    final Product product = productPort.getProduct(productId);
+    product.update(request.name(), request.price(), request.discountPolicy());
+
+    productPort.save(product);
+    return ResponseEntity.ok().build();
+  }
+}
+```
+
+### **9-4. ProductSteps.java 상품수정요청 메소드 추출 및 추가**
+```java
+package com.example.tdd.product;
+
+import com.example.tdd.ApiTest;
+import io.restassured.RestAssured;
+import io.restassured.response.ExtractableResponse;
+import io.restassured.response.Response;
+import org.springframework.http.MediaType;
+
+public class ProductSteps extends ApiTest {
+    public static UpdateProductRequest 상품수정요청_생성() {
+        return new UpdateProductRequest("상품 수정", 2000, DiscountPolicy.NONE);
+    }
+
+    static ExtractableResponse<Response> 상품수정요청(long productId) {
+        return RestAssured.given().log().all()
+                .contentType(MediaType.APPLICATION_JSON_VALUE)
+                .body(상품수정요청_생성())
+                .when()
+                .patch("/products/{productId}", productId)
+                .then()
+                .log().all().extract();
+    }
+}
+```
