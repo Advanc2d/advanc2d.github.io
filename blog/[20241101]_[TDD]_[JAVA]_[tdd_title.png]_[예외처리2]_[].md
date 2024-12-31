@@ -1404,3 +1404,137 @@ public class ProductSteps extends ApiTest {
     }
 }
 ```
+
+## **10. POJO 상품 주문 기능 구현**
+
+### **10-1. order 패키지, OrderServiceTest.java 생성**
+
+```java
+package com.example.tdd.order;
+
+import com.example.tdd.product.DiscountPolicy;
+import com.example.tdd.product.Product;
+import com.example.tdd.product.ProductRepository;
+import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.Test;
+import org.springframework.util.Assert;
+
+import java.util.HashMap;
+import java.util.Map;
+
+public class OrderServiceTest {
+
+    private OrderService orderService;
+    private OrderPort orderPort;
+    private OrderRepository orderRepository;
+
+    @BeforeEach
+    void setUp() {
+        orderRepository = new OrderRepository();
+        orderPort = new OrderPort() {
+
+            @Override
+            public Product getProductId(Long productId) {
+                return new Product("상품명", 1000, DiscountPolicy.NONE);
+            }
+
+            @Override
+            public void save(Order order) {
+                orderRepository.save(order);
+            }
+        };
+        orderService = new OrderService(orderPort);
+    }
+
+    @Test
+    void 상품주문() {
+        final Long productId = 1L;
+        final int quantity = 2;
+        final CreateOrderRequest request = new CreateOrderRequest(productId, quantity);
+
+        orderService.createOrder(request);
+    }
+
+    private record CreateOrderRequest(Long productId, int quantity) {
+        private CreateOrderRequest {
+            Assert.notNull(productId, "상품 ID는 필수입니다.");
+            Assert.isTrue(quantity > 0, "수량은 0보다 커야합니다.");
+        }
+    }
+
+    private class OrderService {
+        private final OrderPort orderPort;
+
+        private OrderService(OrderPort orderPort) {
+            this.orderPort = orderPort;
+        }
+
+        public void createOrder(final CreateOrderRequest request) {
+            final Product product = orderPort.getProductId(request.productId());
+            new Order(product, request.quantity());
+        }
+    }
+
+    public interface OrderPort {
+        Product getProductId(final Long productId);
+        void save(final Order order);
+    }
+
+    private class OrderAdapter implements OrderPort {
+
+        private final ProductRepository productRepository;
+        private final OrderRepository orderRepository;
+
+        private OrderAdapter(final ProductRepository productRepository, OrderRepository orderRepository) {
+            this.productRepository = productRepository;
+            this.orderRepository = orderRepository;
+        }
+
+        @Override
+        public Product getProductId(final Long productId) {
+            return productRepository.findById(productId)
+                    .orElseThrow(() -> new IllegalArgumentException("상품이 존재하지 않습니다."));
+        }
+
+        @Override
+        public void save(final Order order) {
+            orderRepository.save(order);
+        }
+    }
+
+    private class Order {
+        private Long id;
+        private final Product product;
+        private final int quantity;
+
+        public Order(Product product, int quantity) {
+            this.product = product;
+            this.quantity = quantity;
+            Assert.notNull(product, "상품은 필수입니다.");
+            Assert.isTrue(quantity > 0, "수량은 0보다 커야 합니다.");
+        }
+
+        public void assignId(final Long id) {
+            this.id = id;
+        }
+
+        public Long getId() {
+            return id;
+        }
+    }
+
+    private class OrderRepository {
+        private final Map<Long, Order> persistence = new HashMap<>();
+        private Long sequence = 0L;
+
+        public void save(final Order order) {
+            order.assignId(++sequence);
+            persistence.put(order.getId(), order);
+        }
+    }
+}
+```
+
+## **11. 상품 주문 기능 스프링부트 테스트로 전환**
+
+### **10-1. OrderServiceTest.java 내부 클래스 상위로 추출**
