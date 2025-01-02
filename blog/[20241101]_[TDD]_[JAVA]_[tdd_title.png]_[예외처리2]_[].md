@@ -1537,4 +1537,219 @@ public class OrderServiceTest {
 
 ## **11. 상품 주문 기능 스프링부트 테스트로 전환**
 
-### **10-1. OrderServiceTest.java 내부 클래스 상위로 추출**
+### **11-1. OrderServiceTest.java 내부 클래스 상위로 추출**
+
+1. CreateOrderRequest Class
+```java
+    private record CreateOrderRequest(Long productId, int quantity) {
+        private CreateOrderRequest {
+            Assert.notNull(productId, "상품 ID는 필수입니다.");
+            Assert.isTrue(quantity > 0, "수량은 0보다 커야합니다.");
+        }
+    }
+```
+
+2. Order Class
+```java
+    private class Order {
+        private Long id;
+        private final Product product;
+        private final int quantity;
+
+        public Order(Product product, int quantity) {
+            this.product = product;
+            this.quantity = quantity;
+            Assert.notNull(product, "상품은 필수입니다.");
+            Assert.isTrue(quantity > 0, "수량은 0보다 커야 합니다.");
+        }
+
+        public void assignId(final Long id) {
+            this.id = id;
+        }
+
+        public Long getId() {
+            return id;
+        }
+    }
+```
+
+3. OrderPort Class
+```java
+    public interface OrderPort {
+        Product getProductId(final Long productId);
+        void save(final Order order);
+    }
+```
+
+4. OrderRepository Class
+```java
+    private class OrderRepository {
+        private final Map<Long, Order> persistence = new HashMap<>();
+        private Long sequence = 0L;
+
+        public void save(final Order order) {
+            order.assignId(++sequence);
+            persistence.put(order.getId(), order);
+        }
+    }
+
+```
+
+5. OrderAdapter Class
+```java
+    private class OrderAdapter implements OrderPort {
+
+        private final ProductRepository productRepository;
+        private final OrderRepository orderRepository;
+
+        private OrderAdapter(final ProductRepository productRepository, OrderRepository orderRepository) {
+            this.productRepository = productRepository;
+            this.orderRepository = orderRepository;
+        }
+
+        @Override
+        public Product getProductId(final Long productId) {
+            return productRepository.findById(productId)
+                    .orElseThrow(() -> new IllegalArgumentException("상품이 존재하지 않습니다."));
+        }
+
+        @Override
+        public void save(final Order order) {
+            orderRepository.save(order);
+        }
+    }
+```
+
+6. OrderService Class
+```java
+public class OrderService {
+    private final OrderPort orderPort;
+
+    OrderService(OrderPort orderPort) {
+        this.orderPort = orderPort;
+    }
+
+    public void createOrder(final CreateOrderRequest request) {
+        final Product product = orderPort.getProductId(request.productId());
+        new Order(product, request.quantity());
+    }
+}
+```
+
+7. Main으로 이동
+위 클래스 모두 Main으로 이동
+![img.png](../img/tdd6.png)
+
+### **11-2. OrderService.java `@Component` 추가**
+```java
+package com.example.tdd.order;
+
+import com.example.tdd.product.Product;
+import org.springframework.stereotype.Component;
+
+@Component
+class OrderService {
+  private final OrderPort orderPort;
+
+  OrderService(OrderPort orderPort) {
+    this.orderPort = orderPort;
+  }
+
+  public void createOrder(final CreateOrderRequest request) {
+    final Product product = orderPort.getProductId(request.productId());
+    new Order(product, request.quantity());
+  }
+}
+```
+
+### **11-3. OrderAdapter.java `@Component` 추가**
+
+```java
+package com.example.tdd.order;
+
+import com.example.tdd.product.Product;
+import com.example.tdd.product.ProductRepository;
+import org.springframework.stereotype.Component;
+
+@Component
+class OrderAdapter implements OrderPort {
+
+    private final ProductRepository productRepository;
+    private final OrderRepository orderRepository;
+
+    private OrderAdapter(final ProductRepository productRepository, OrderRepository orderRepository) {
+        this.productRepository = productRepository;
+        this.orderRepository = orderRepository;
+    }
+
+    @Override
+    public Product getProductId(final Long productId) {
+        return productRepository.findById(productId)
+                .orElseThrow(() -> new IllegalArgumentException("상품이 존재하지 않습니다."));
+    }
+
+    @Override
+    public void save(final Order order) {
+        orderRepository.save(order);
+    }
+}
+```
+
+### **11-4. OrderRepository.java `@Repository` 추가**
+```java
+package com.example.tdd.order;
+
+import org.springframework.stereotype.Repository;
+
+import java.util.HashMap;
+import java.util.Map;
+
+@Repository
+class OrderRepository {
+    private final Map<Long, Order> persistence = new HashMap<>();
+    private Long sequence = 0L;
+
+    public void save(final Order order) {
+        order.assignId(++sequence);
+        persistence.put(order.getId(), order);
+    }
+}
+```
+
+### **11-4. OrderSerivceTest.java `@BeforeEach` 제거 및 `@SpringBootTest` 추가 **
+- `@BeforeEach` setUp 메소드 제거
+- `@SpringBootTest` 추가
+- 사용하지 않는 OrderPort, OrderRepository 제거
+- ProductService.java 추가, ProductService public 선언
+```java
+package com.example.tdd.order;
+
+import com.example.tdd.product.ProductService;
+import com.example.tdd.product.ProductSteps;
+import org.junit.jupiter.api.Test;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.boot.test.context.SpringBootTest;
+
+@SpringBootTest
+public class OrderServiceTest {
+
+    @Autowired
+    private OrderService orderService;
+    @Autowired
+    private ProductService productService;
+
+    @Test
+    void 상품주문() {
+        productService.addProduct(ProductSteps.상품등록요청_생성());
+        final CreateOrderRequest request = 상품주문요청_생성();
+
+        orderService.createOrder(request);
+    }
+
+    private static CreateOrderRequest 상품주문요청_생성() {
+        final Long productId = 1L;
+        final int quantity = 2;
+        return new CreateOrderRequest(productId, quantity);
+    }
+}
+```
