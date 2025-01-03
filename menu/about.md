@@ -75,26 +75,30 @@
                 font-weight: 900;
                 color: rgba(203, 145, 47, 1);
                 fill: rgba(203, 145, 47, 1)">
-        <details>
-            <summary>Spring Cloud</summary>
-            <ul>
-                <li>Config</li>
-                <li>Eureka</li>
-                <li>Gateway</li>
-                <li>OpenFeign</li>
-            </ul>
-        </details>
-        <li>Spring Webflux</li>
-        <li>Spring Data JPA</li>
-        <li>Elastic Search</li>
-        <li>HTML5 + CSS</li>
-        <li>MSA</li>
-        <li>Kubernetes</li>
-        <li>Docker</li>
-        <li>Redis</li>
-        <li>Electron</li>
-        <li>Vue</li>
-        <li>VS Code</li>
+        <ul>
+            <li>
+                <details>
+                    <summary>Spring Cloud</summary>
+                    <ul>
+                        <li>Config</li>
+                        <li>Eureka</li>
+                        <li>Gateway</li>
+                        <li>OpenFeign</li>
+                    </ul>
+                </details>
+            </li>
+            <li>Spring Webflux</li>
+            <li>Spring Data JPA</li>
+            <li>Elastic Search</li>
+            <li>HTML5 + CSS</li>
+            <li>MSA</li>
+            <li>Kubernetes</li>
+            <li>Docker</li>
+            <li>Redis</li>
+            <li>Electron</li>
+            <li>Vue</li>
+            <li>VS Code</li>
+        </ul>
     </div>
     <div style="flex: 1; padding: 10px;">
         <li>습득력</li>
