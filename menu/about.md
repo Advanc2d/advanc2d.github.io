@@ -76,17 +76,15 @@
                 color: rgba(203, 145, 47, 1);
                 fill: rgba(203, 145, 47, 1)">
         <ul>
-            <li>
-                <details>
-                    <summary>Spring Cloud</summary>
-                    <ul>
-                        <li>Config</li>
-                        <li>Eureka</li>
-                        <li>Gateway</li>
-                        <li>OpenFeign</li>
-                    </ul>
-                </details>
-            </li>
+            <details>
+                <summary>Spring Cloud</summary>
+                <ul>
+                    <li>Config</li>
+                    <li>Eureka</li>
+                    <li>Gateway</li>
+                    <li>OpenFeign</li>
+                </ul>
+            </details>
             <li>Spring Webflux</li>
             <li>Spring Data JPA</li>
             <li>Elastic Search</li>
