@@ -12,7 +12,7 @@
 - 반복 테스트를 이용한 소프트웨어 방법론으로 작은 단위의 테스트 케이스를 작성하고 이를 통과하는 코드를 추가하는 단계를 반복하여 구현해 나간다.
 ## **Project 생성**
 
-![tdd1.png](../img/tdd1.png)
+![tdd1.png](../img/tdd/tdd1.png)
 - dependency - jpa, h2, lombok, web
 - ```
    implementation 'org.springframework.boot:spring-boot-starter-data-jpa'
@@ -24,15 +24,15 @@
    testRuntimeOnly 'org.junit.platform:junit-platform-launcher'
   ```
 
-## **1. Test 코드 작성**
+## **1. 상품등록 API 개발**
 
 ### **1-1. Boot Project 로드 테스트**
 - contextLoads 메소드 좌측의 실행 버튼을 이용하여 실행 후 테스트 결과 확인
 
 
-![tdd2.png](../img/tdd2.png)
+![tdd2.png](../img/tdd/tdd2.png)
 
-### **1-2. TDD 코드 작성 1차**
+### **1-2. POJO 상품 등록 기능 구현하기**
 - product 패키지 생성
 - ProductServiceTest 클래스 생성
 
@@ -86,7 +86,7 @@ public class ProductServiceTest {
 }
 ```
 
-### **1-3. TDD 코드 작성 2차**
+### **1-3. POJO 상품 등록 기능 구현하기 2차**
 - @Test 확인
 
 ```java
@@ -207,13 +207,13 @@ public class ProductServiceTest {
 
 ### **1-4. 내부클래스를 상위 클래스로 이동 / 단축키: F6**
 - Test 클래스 제외 모두 상위로 이동
-![tdd3.png](../img/tdd3.png)
+![tdd3.png](../img/tdd/tdd3.png)
 
 ### **1-5. Test 확인**
 
 ### **1-6. test 폴더의 클래스들을 main으로 이동**
-![tdd4.png](../img/tdd4.png)
-![tdd5.png](../img/tdd5.png)
+![tdd4.png](../img/tdd/tdd4.png)
+![tdd5.png](../img/tdd/tdd5.png)
 
 ## **2. Spring Boot Bean으로 테스트 전환하기**
 
@@ -1638,7 +1638,7 @@ public class OrderService {
 
 7. Main으로 이동
 위 클래스 모두 Main으로 이동
-![img.png](../img/tdd6.png)
+![img.png](../img/tdd/tdd6.png)
 
 ### **11-2. OrderService.java `@Component` 추가**
 ```java
@@ -1750,6 +1750,88 @@ public class OrderServiceTest {
         final Long productId = 1L;
         final int quantity = 2;
         return new CreateOrderRequest(productId, quantity);
+    }
+}
+```
+
+## **12. 상품 주문 기능 API 테스트로 전환**
+
+### **12-1. OrderServiceTest.java -> OrderApiTest.java 변경**
+- 코드 변경(아래 참조)
+- `@SpringBootTest` 어노테이션 제거 -> extends 한 ApiTest에서 상속받아 사용
+```java
+package com.example.tdd.order;
+
+import com.example.tdd.ApiTest;
+import com.example.tdd.product.ProductSteps;
+import io.restassured.RestAssured;
+import io.restassured.response.ExtractableResponse;
+import io.restassured.response.Response;
+import org.junit.jupiter.api.Test;
+import org.springframework.http.HttpStatus;
+import org.springframework.http.MediaType;
+
+import static org.assertj.core.api.Assertions.assertThat;
+
+public class OrderApiTest extends ApiTest {
+
+  @Test
+  void 상품주문() {
+    ProductSteps.상품등록요청(ProductSteps.상품등록요청_생성());
+    final CreateOrderRequest request = 상품주문요청_생성();
+
+    ExtractableResponse<Response> response = RestAssured.given().log().all()
+            .contentType(MediaType.APPLICATION_JSON_VALUE)
+            .body(request)
+            .when()
+            .post("/orders")
+            .then()
+            .log().all().extract();
+
+    assertThat(response.statusCode()).isEqualTo(HttpStatus.CREATED.value());
+  }
+
+  private static CreateOrderRequest 상품주문요청_생성() {
+    final Long productId = 1L;
+    final int quantity = 2;
+    return new CreateOrderRequest(productId, quantity);
+  }
+
+}
+```
+
+### **12-1. OrderService.java 어노테이션 추가**
+- `@Component` 제거 후 `@RestController`, `@RequestMapping("/orders")` 어노테이션 추가
+- createOrder 메소드 `@PostMapping` 어노테이션 추가 및 코드 변경
+```java
+package com.example.tdd.order;
+
+import com.example.tdd.product.Product;
+import org.springframework.http.HttpStatus;
+import org.springframework.http.ResponseEntity;
+import org.springframework.web.bind.annotation.PostMapping;
+import org.springframework.web.bind.annotation.RequestBody;
+import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RestController;
+
+@RestController
+@RequestMapping("/orders")
+class OrderService {
+    private final OrderPort orderPort;
+
+    OrderService(OrderPort orderPort) {
+        this.orderPort = orderPort;
+    }
+
+    @PostMapping
+    public ResponseEntity<Void> createOrder(@RequestBody final CreateOrderRequest request) {
+        final Product product = orderPort.getProductId(request.productId());
+
+        final Order order = new Order(product, request.quantity());
+
+        orderPort.save(order);
+
+        return ResponseEntity.status(HttpStatus.CREATED).build();
     }
 }
 ```
