@@ -1835,3 +1835,103 @@ class OrderService {
     }
 }
 ```
+
+## **13. 상품 주문 기능 JPA 적용**
+
+### **13-1. OrderRepository.java JPARepository로 변경**
+```java
+package com.example.tdd.order;
+
+import org.springframework.data.jpa.repository.JpaRepository;
+
+interface OrderRepository extends JpaRepository<Order, Long> {
+}
+```
+
+### **13-2. Order.java JPA 내용 수정 및 추가**
+```java
+package com.example.tdd.order;
+
+import com.example.tdd.product.Product;
+import lombok.AccessLevel;
+import lombok.Getter;
+import lombok.NoArgsConstructor;
+import org.springframework.util.Assert;
+
+import javax.persistence.*;
+
+@Entity
+@Table(name = "orders")
+@NoArgsConstructor(access = AccessLevel.PROTECTED)
+@Getter
+public class Order {
+  @Id
+  @GeneratedValue(strategy =  GenerationType.IDENTITY)
+  private Long id;
+
+  @OneToOne
+  private Product product;
+
+  private int quantity;
+
+  public Order(Product product, int quantity) {
+    this.product = product;
+    this.quantity = quantity;
+    Assert.notNull(product, "상품은 필수입니다.");
+    Assert.isTrue(quantity > 0, "수량은 0보다 커야 합니다.");
+  }
+}
+```
+
+### **13-3. OrderApiTest.java 메소드 상위 클래스 추출**
+```java
+package com.example.tdd.order;
+
+import com.example.tdd.ApiTest;
+import io.restassured.RestAssured;
+import io.restassured.response.ExtractableResponse;
+import io.restassured.response.Response;
+import org.springframework.http.MediaType;
+
+public class OrderSteps extends ApiTest {
+    protected static ExtractableResponse<Response> 상품주문요청(CreateOrderRequest request) {
+        return RestAssured.given().log().all()
+                .contentType(MediaType.APPLICATION_JSON_VALUE)
+                .body(request)
+                .when()
+                .post("/orders")
+                .then()
+                .log().all().extract();
+    }
+
+    protected static CreateOrderRequest 상품주문요청_생성() {
+        final Long productId = 1L;
+        final int quantity = 2;
+        return new CreateOrderRequest(productId, quantity);
+    }
+}
+```
+
+### **13-3. OrderApiTest.java 수정**
+```java
+package com.example.tdd.order;
+
+import com.example.tdd.product.ProductSteps;
+import org.junit.jupiter.api.Test;
+import org.springframework.http.HttpStatus;
+
+import static org.assertj.core.api.Assertions.assertThat;
+
+public class OrderApiTest extends OrderSteps {
+
+    @Test
+    void 상품주문() {
+        ProductSteps.상품등록요청(ProductSteps.상품등록요청_생성());
+        final var request = 상품주문요청_생성();
+
+        final var response = 상품주문요청(request);
+
+        assertThat(response.statusCode()).isEqualTo(HttpStatus.CREATED.value());
+    }
+}
+```
