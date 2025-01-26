@@ -1935,3 +1935,150 @@ public class OrderApiTest extends OrderSteps {
     }
 }
 ```
+
+## **14. POJO 주문 결제 기능 구현**
+
+
+### **14-1. PaymentServiceTest.java 생성**
+- 내부 클래스 적용
+
+```java
+package com.example.tdd.payment;
+
+import com.example.tdd.order.Order;
+import com.example.tdd.product.DiscountPolicy;
+import com.example.tdd.product.Product;
+import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.Test;
+import org.springframework.util.Assert;
+
+import java.util.HashMap;
+import java.util.Map;
+
+public class PaymentServiceTest {
+
+    private PaymentService paymentService;
+    private PaymentPort paymentPort;
+
+    @BeforeEach
+    void setUp() {
+        PaymentGateway paymentGateway = new ConsolePaymentGatewayImpl();
+        PaymentRepository paymentRepository = new PaymentRepository();
+        paymentPort = new PaymentAdapter(paymentGateway, paymentRepository);
+        paymentService = new PaymentService(paymentPort);
+    }
+
+    @Test
+    void 상품주문() {
+        final PaymentRequest request = 주문결제요청_생성();
+
+        paymentService.payment(request);
+    }
+
+    private static PaymentRequest 주문결제요청_생성() {
+        Long orderId = 1L;
+        final String cardNumber = "1234-1234-1234-1234";
+        return new PaymentRequest(orderId, cardNumber);
+    }
+
+    private record PaymentRequest(Long orderId, String cardNumber) {
+        private PaymentRequest {
+            Assert.notNull(orderId, "주문 ID는 필수입니다.");
+            Assert.hasText(cardNumber, "카드 번호는 필수입니다.");
+        }
+    }
+
+    private class PaymentService {
+        private final PaymentPort paymentPort;
+
+        private PaymentService(PaymentPort paymentPort) {
+            this.paymentPort = paymentPort;
+        }
+
+        public void payment(PaymentRequest request) {
+            Order order = paymentPort.getOrder(request.orderId());
+
+            final Payment payment = new Payment(order, request.cardNumber());
+
+            paymentPort.pay(payment);
+            paymentPort.save(payment);
+        }
+    }
+
+    private interface PaymentPort {
+        Order getOrder(Long orderId);
+
+        void pay(Payment payment);
+
+        void save(Payment payment);
+    }
+
+    private class Payment {
+        private Long id;
+        private final Order order;
+        private final String cardNumber;
+
+
+        public Payment(Order order, String cardNumber) {
+            Assert.notNull(order, "주문은 필수입니다.");
+            Assert.hasText(cardNumber, "카드 번호는 필수입니다.");
+            this.order = order;
+            this.cardNumber = cardNumber;
+        }
+
+        public void assignId(Long id) {
+            this.id = id;
+        }
+
+        public Long getId() {
+            return this.id;
+        }
+    }
+
+    private class PaymentAdapter implements PaymentPort {
+        private final PaymentGateway paymentGateway;
+        private final PaymentRepository paymentRepository;
+
+        private PaymentAdapter(PaymentGateway paymentGateway, PaymentRepository paymentRepository) {
+            this.paymentGateway = paymentGateway;
+            this.paymentRepository = paymentRepository;
+        }
+
+        @Override
+        public Order getOrder(Long orderId) {
+            return new Order(new Product("상품1", 1000, DiscountPolicy.NONE), 2);
+        }
+
+        @Override
+        public void pay(Payment payment) {
+            paymentGateway.excute(payment);
+        }
+
+        @Override
+        public void save(Payment payment) {
+            paymentRepository.save(payment);
+        }
+    }
+
+    private interface PaymentGateway {
+        void excute(Payment payment);
+    }
+
+    public class ConsolePaymentGatewayImpl implements PaymentGateway {
+
+        @Override
+        public void excute(Payment payment) {
+            System.out.println("결제 완료");
+        }
+    }
+
+    private class PaymentRepository {
+        private Map<Long, Payment> persistence = new HashMap<>();
+        private Long sequence = 0L;
+        public void save(Payment payment) {
+            payment.assignId(++sequence);
+            persistence.put(payment.getId(), payment);
+        }
+    }
+}
+```
