@@ -2082,3 +2082,176 @@ public class PaymentServiceTest {
     }
 }
 ```
+
+### **14-2. PaymentServiceTest.java 내부 클래스 상위 클래스로 이동**
+- 상위 클래스 이동
+
+1. PaymentRequest.java
+```java
+package com.example.tdd.payment;
+
+import org.springframework.util.Assert;
+
+record PaymentRequest(Long orderId, String cardNumber) {
+    PaymentRequest {
+        Assert.notNull(orderId, "주문 ID는 필수입니다.");
+        Assert.hasText(cardNumber, "카드 번호는 필수입니다.");
+    }
+}
+```
+
+2. Payment.java
+```java
+package com.example.tdd.payment;
+
+import com.example.tdd.order.Order;
+import org.springframework.util.Assert;
+
+class Payment {
+    private Long id;
+    private final Order order;
+    private final String cardNumber;
+
+
+    public Payment(Order order, String cardNumber) {
+        Assert.notNull(order, "주문은 필수입니다.");
+        Assert.hasText(cardNumber, "카드 번호는 필수입니다.");
+        this.order = order;
+        this.cardNumber = cardNumber;
+    }
+
+    public void assignId(Long id) {
+        this.id = id;
+    }
+
+    public Long getId() {
+        return this.id;
+    }
+}
+```
+
+3. PaymentPort.java
+```java
+package com.example.tdd.payment;
+
+import com.example.tdd.order.Order;
+
+interface PaymentPort {
+    Order getOrder(Long orderId);
+
+    void pay(Payment payment);
+
+    void save(Payment payment);
+}
+```
+
+4. PaymentGateway.java
+```java
+package com.example.tdd.payment;
+
+interface PaymentGateway {
+    void excute(Payment payment);
+}
+```
+
+5. ConsolePaymentGateway.java
+```java
+package com.example.tdd.payment;
+
+public class ConsolePaymentGatewayImpl implements PaymentGateway {
+
+    @Override
+    public void excute(Payment payment) {
+        System.out.println("결제 완료");
+    }
+}
+```
+
+6. PaymentRepository.java
+```java
+package com.example.tdd.payment;
+
+import java.util.HashMap;
+import java.util.Map;
+
+class PaymentRepository {
+    private Map<Long, Payment> persistence = new HashMap<>();
+    private Long sequence = 0L;
+
+    public void save(Payment payment) {
+        payment.assignId(++sequence);
+        persistence.put(payment.getId(), payment);
+    }
+}
+```
+
+7. PaymentAdapter.java
+```java
+package com.example.tdd.payment;
+
+import com.example.tdd.order.Order;
+import com.example.tdd.product.DiscountPolicy;
+import com.example.tdd.product.Product;
+
+class PaymentAdapter implements PaymentPort {
+    private final PaymentGateway paymentGateway;
+    private final PaymentRepository paymentRepository;
+
+    PaymentAdapter(PaymentGateway paymentGateway, PaymentRepository paymentRepository) {
+        this.paymentGateway = paymentGateway;
+        this.paymentRepository = paymentRepository;
+    }
+
+    @Override
+    public Order getOrder(Long orderId) {
+        return new Order(new Product("상품1", 1000, DiscountPolicy.NONE), 2);
+    }
+
+    @Override
+    public void pay(Payment payment) {
+        paymentGateway.excute(payment);
+    }
+
+    @Override
+    public void save(Payment payment) {
+        paymentRepository.save(payment);
+    }
+}
+```
+
+8. PaymentService.java
+```java
+package com.example.tdd.payment;
+
+import com.example.tdd.order.Order;
+
+class PaymentService {
+    private final PaymentPort paymentPort;
+
+    PaymentService(PaymentPort paymentPort) {
+        this.paymentPort = paymentPort;
+    }
+
+    public void payment(PaymentRequest request) {
+        Order order = paymentPort.getOrder(request.orderId());
+
+        final Payment payment = new Payment(order, request.cardNumber());
+
+        paymentPort.pay(payment);
+        paymentPort.save(payment);
+    }
+}
+```
+
+9. PaymentSteps.java
+```java
+package com.example.tdd.payment;
+
+public class PaymentSteps {
+    public static PaymentRequest 주문결제요청_생성() {
+        Long orderId = 1L;
+        final String cardNumber = "1234-1234-1234-1234";
+        return new PaymentRequest(orderId, cardNumber);
+    }
+}
+```
