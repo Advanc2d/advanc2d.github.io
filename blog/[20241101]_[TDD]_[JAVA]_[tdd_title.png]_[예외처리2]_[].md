@@ -2255,3 +2255,350 @@ public class PaymentSteps {
     }
 }
 ```
+
+### **14-3. 결제 메소드 비즈니스 로직 변경**
+
+1. PaymentService pay 메소드 파라미터 payment -> price, cardNumber
+
+```java
+package com.example.tdd.payment;
+
+import com.example.tdd.order.Order;
+
+class PaymentService {
+    private final PaymentPort paymentPort;
+
+    PaymentService(PaymentPort paymentPort) {
+        this.paymentPort = paymentPort;
+    }
+
+    public void payment(PaymentRequest request) {
+        Order order = paymentPort.getOrder(request.orderId());
+
+        final Payment payment = new Payment(order, request.cardNumber());
+
+        paymentPort.pay(payment.getPrice(), payment.getCardNumber());
+        paymentPort.save(payment);
+    }
+}
+
+```
+
+2. PaymentPort.java 수정
+```java
+package com.example.tdd.payment;
+
+import com.example.tdd.order.Order;
+
+interface PaymentPort {
+    Order getOrder(Long orderId);
+
+    void pay(int totalPrice, String cardNumber);
+
+    void save(Payment payment);
+}
+```
+3. PaymentAdapter.java 수정
+```java
+package com.example.tdd.payment;
+
+import com.example.tdd.order.Order;
+import com.example.tdd.product.DiscountPolicy;
+import com.example.tdd.product.Product;
+
+class PaymentAdapter implements PaymentPort {
+    private final PaymentGateway paymentGateway;
+    private final PaymentRepository paymentRepository;
+
+    PaymentAdapter(PaymentGateway paymentGateway, PaymentRepository paymentRepository) {
+        this.paymentGateway = paymentGateway;
+        this.paymentRepository = paymentRepository;
+    }
+
+    @Override
+    public Order getOrder(Long orderId) {
+        return new Order(new Product("상품1", 1000, DiscountPolicy.NONE), 2);
+    }
+
+    @Override
+    public void pay(final int totalPrice, final String cardNumber) {
+        paymentGateway.excute(totalPrice, cardNumber);
+    }
+
+    @Override
+    public void save(Payment payment) {
+        paymentRepository.save(payment);
+    }
+}
+```
+
+4. PaymentGateway.java 수정
+```java
+package com.example.tdd.payment;
+
+interface PaymentGateway {
+    void excute(int totalPrice, String cardNumber);
+}
+```
+
+5. ConsolePaymentGatewayImpl.java 수정
+```java
+package com.example.tdd.payment;
+
+public class ConsolePaymentGatewayImpl implements PaymentGateway {
+
+    @Override
+    public void excute(int totalPrice, String cardNumber) {
+        System.out.println("결제 완료");
+    }
+}
+```
+
+6. Payment.java 메소드 추가
+```java
+package com.example.tdd.payment;
+
+import com.example.tdd.order.Order;
+import org.springframework.util.Assert;
+
+class Payment {
+    private Long id;
+    private final Order order;
+    private final String cardNumber;
+
+
+    public Payment(Order order, String cardNumber) {
+        Assert.notNull(order, "주문은 필수입니다.");
+        Assert.hasText(cardNumber, "카드 번호는 필수입니다.");
+        this.order = order;
+        this.cardNumber = cardNumber;
+    }
+
+    public void assignId(Long id) {
+        this.id = id;
+    }
+
+    public Long getId() {
+        return this.id;
+    }
+
+    public int getPrice() {
+        return order.getTotalPrice();
+    }
+
+    public String getCardNumber() {
+        return cardNumber;
+    }
+}
+```
+
+7. Order.java 메소드 추가
+```java
+package com.example.tdd.order;
+
+import com.example.tdd.product.Product;
+import lombok.AccessLevel;
+import lombok.Getter;
+import lombok.NoArgsConstructor;
+import org.springframework.util.Assert;
+
+import javax.persistence.*;
+
+@Entity
+@Table(name = "orders")
+@NoArgsConstructor(access = AccessLevel.PROTECTED)
+@Getter
+public class Order {
+    @Id
+    @GeneratedValue(strategy =  GenerationType.IDENTITY)
+    private Long id;
+
+    @OneToOne
+    private Product product;
+
+    private int quantity;
+
+    public Order(Product product, int quantity) {
+        this.product = product;
+        this.quantity = quantity;
+        Assert.notNull(product, "상품은 필수입니다.");
+        Assert.isTrue(quantity > 0, "수량은 0보다 커야 합니다.");
+    }
+
+    public int getTotalPrice() {
+        return product.getDiscountedPrice() * quantity;
+    }
+}
+```
+
+8. Product.java 메소드 추가
+```java
+package com.example.tdd.product;
+
+import lombok.AccessLevel;
+import lombok.Getter;
+import lombok.NoArgsConstructor;
+import org.springframework.util.Assert;
+
+import javax.persistence.*;
+
+@Entity
+@Table(name = "products")
+@Getter
+@NoArgsConstructor(access = AccessLevel.PROTECTED)
+public class Product {
+    @Id
+    @GeneratedValue(strategy = GenerationType.IDENTITY)
+    private Long id;
+
+    private String name;
+
+    private int price;
+
+    private DiscountPolicy discountPolicy;
+
+    public Product(final String name, final int price, final DiscountPolicy discountPolicy) {
+        Assert.hasText(name, "상품명은 필수입니다.");
+        Assert.isTrue(price > 0, "상품 가격은 0보다 커야합니다.");
+        Assert.notNull(discountPolicy, "할인 정책은 필수입니다.");
+        this.name = name;
+        this.price = price;
+        this.discountPolicy = discountPolicy;
+    }
+
+    public void update(final String name, final int price, final DiscountPolicy discountPolicy) {
+        Assert.hasText(name, "상품명은 필수입니다.");
+        Assert.isTrue(price > 0, "상품 가격은 0보다 커야합니다.");
+        Assert.notNull(discountPolicy, "할인 정책은 필수입니다.");
+        this.name = name;
+        this.price = price;
+        this.discountPolicy = discountPolicy;
+    }
+
+    public int getDiscountedPrice() {
+        return discountPolicy.applyDiscount(price);
+    }
+}
+```
+
+9. DiscountPolicy.java  추가
+```java
+package com.example.tdd.product;
+
+public enum DiscountPolicy {
+    NONE {
+        @Override
+        int applyDiscount(final int price) {
+            return price;
+        }
+    },
+    FIX_1000_AMOUNT {
+        @Override
+        int applyDiscount(final int price) {
+            return Math.max(price - 1000, 0);
+        }
+    };
+
+    abstract int applyDiscount(final int price);
+}
+```
+
+### **14-4. 비즈니스 로직 변경 테스트**
+
+1. DiscountPolicyTest.java 생성
+```java
+package com.example.tdd.product;
+
+import org.junit.jupiter.api.Test;
+import static org.assertj.core.api.Assertions.assertThat;
+
+class DiscountPolicyTest {
+
+    @Test
+    void noneDiscountPolicy() {
+        final int price = 1000;
+        final int discountedPrice = DiscountPolicy.NONE.applyDiscount(price);
+
+        assertThat(discountedPrice).isEqualTo(price);
+    }
+
+    @Test
+    void fix1000DiscountPolicy() {
+        final int price = 2000;
+        final int discountedPrice = DiscountPolicy.FIX_1000_AMOUNT.applyDiscount(price);
+
+        assertThat(discountedPrice).isEqualTo(1000);
+    }
+
+    @Test
+    void overDiscountPolicy() {
+        final int price = 500;
+        final int discountedPrice = DiscountPolicy.FIX_1000_AMOUNT.applyDiscount(price);
+
+        assertThat(discountedPrice).isEqualTo(0);
+    }
+}
+```
+
+2. ProductTest.java 추가
+```java
+package com.example.tdd.product;
+
+import org.junit.jupiter.api.Test;
+
+import static org.assertj.core.api.Assertions.assertThat;
+
+class ProductTest {
+    @Test
+    void update() {
+        final Product product = new Product("상품명", 1000, DiscountPolicy.NONE);
+
+        product.update("상품 수정", 2000, DiscountPolicy.NONE);
+
+        assertThat(product.getName()).isEqualTo("상품 수정");
+        assertThat(product.getPrice()).isEqualTo(2000);
+    }
+
+    @Test
+    void none_discounted_product() {
+        final Product product = new Product("상품명", 1000, DiscountPolicy.NONE);
+
+        final int discountedPrice = product.getDiscountedPrice();
+
+        assertThat(discountedPrice).isEqualTo(1000);
+    }
+
+    @Test
+    void fix_1000_discounted_product() {
+        final Product product = new Product("상품명", 1000, DiscountPolicy.FIX_1000_AMOUNT);
+
+        final int discountedPrice = product.getDiscountedPrice();
+
+        assertThat(discountedPrice).isEqualTo(0);
+    }
+
+```
+
+3. OrderTest.java 생성
+```java
+package com.example.tdd.order;
+
+import com.example.tdd.product.DiscountPolicy;
+import com.example.tdd.product.Product;
+import org.junit.jupiter.api.Test;
+
+import static org.assertj.core.api.Assertions.assertThat;
+
+class OrderTest {
+
+    @Test
+    void getTotalPrice() {
+        final Order order = new Order(new Product("상품명", 2000, DiscountPolicy.FIX_1000_AMOUNT), 2);
+
+        final int totalPrice = order.getTotalPrice();
+
+        assertThat(totalPrice).isEqualTo(2000);
+    }
+}
+```
+
