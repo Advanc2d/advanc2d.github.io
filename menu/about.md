@@ -76,7 +76,7 @@
                 color: rgba(203, 145, 47, 1);
                 fill: rgba(203, 145, 47, 1)">
         <ul>
-            <li>
+            <li style="list-style-type: none;">
                 <details>
                     <summary>Spring Cloud</summary>
                     <ul>
