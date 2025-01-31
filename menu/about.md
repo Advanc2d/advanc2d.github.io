@@ -77,7 +77,7 @@
                 fill: rgba(203, 145, 47, 1)">
         <ul>
             <li style="list-style-type: none;">
-                <details>
+                <details open>
                     <summary>Spring Cloud</summary>
                     <ul>
                         <li>Config</li>
