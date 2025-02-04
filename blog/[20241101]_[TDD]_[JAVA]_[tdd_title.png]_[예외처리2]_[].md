@@ -2628,6 +2628,224 @@ public class PaymentServiceTest {
 
         paymentService.payment(request);
     }
+}
+```
 
+### 추가 내용
+1. OrderService.java `@Transactional` 어노테이션 추가 및 public 처리
+
+```java
+package com.example.tdd.order;
+
+import com.example.tdd.product.Product;
+import org.springframework.http.HttpStatus;
+import org.springframework.http.ResponseEntity;
+import org.springframework.transaction.annotation.Transactional;
+import org.springframework.web.bind.annotation.PostMapping;
+import org.springframework.web.bind.annotation.RequestBody;
+import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RestController;
+
+@RestController
+@RequestMapping("/orders")
+public class OrderService {
+    private final OrderPort orderPort;
+
+    OrderService(OrderPort orderPort) {
+        this.orderPort = orderPort;
+    }
+
+    @PostMapping
+    @Transactional
+    public ResponseEntity<Void> createOrder(@RequestBody final CreateOrderRequest request) {
+        final Product product = orderPort.getProductId(request.productId());
+
+        final Order order = new Order(product, request.quantity());
+
+        orderPort.save(order);
+
+        return ResponseEntity.status(HttpStatus.CREATED).build();
+    }
+}
+```
+
+2. OrderSteps.java 메소드 public 처리
+```java
+package com.example.tdd.order;
+
+import com.example.tdd.ApiTest;
+import io.restassured.RestAssured;
+import io.restassured.response.ExtractableResponse;
+import io.restassured.response.Response;
+import org.springframework.http.MediaType;
+
+public class OrderSteps extends ApiTest {
+    public static ExtractableResponse<Response> 상품주문요청(CreateOrderRequest request) {
+        return RestAssured.given().log().all()
+                .contentType(MediaType.APPLICATION_JSON_VALUE)
+                .body(request)
+                .when()
+                .post("/orders")
+                .then()
+                .log().all().extract();
+    }
+
+    public static CreateOrderRequest 상품주문요청_생성() {
+        final Long productId = 1L;
+        final int quantity = 2;
+        return new CreateOrderRequest(productId, quantity);
+    }
+}
+```
+3. 
+
+## **15. 결제 기능 스프링부트 테스트로 전환**
+
+### **15-1. `@Component, @Repository, @SpringBootTest` 어노테이션 추가**
+
+1. PaymentService.java
+```java
+package com.example.tdd.payment;
+
+import com.example.tdd.order.Order;
+import org.springframework.stereotype.Component;
+
+@Component
+class PaymentService {
+    private final PaymentPort paymentPort;
+
+    PaymentService(PaymentPort paymentPort) {
+        this.paymentPort = paymentPort;
+    }
+
+    public void payment(PaymentRequest request) {
+        Order order = paymentPort.getOrder(request.orderId());
+
+        final Payment payment = new Payment(order, request.cardNumber());
+
+        paymentPort.pay(payment.getPrice(), payment.getCardNumber());
+        paymentPort.save(payment);
+    }
+}
+```
+
+2. PaymentAdapter.java
+```java
+package com.example.tdd.payment;
+
+import com.example.tdd.order.Order;
+import com.example.tdd.product.DiscountPolicy;
+import com.example.tdd.product.Product;
+import org.springframework.stereotype.Component;
+
+@Component
+class PaymentAdapter implements PaymentPort {
+    private final PaymentGateway paymentGateway;
+    private final PaymentRepository paymentRepository;
+
+    PaymentAdapter(PaymentGateway paymentGateway, PaymentRepository paymentRepository) {
+        this.paymentGateway = paymentGateway;
+        this.paymentRepository = paymentRepository;
+    }
+
+    @Override
+    public Order getOrder(Long orderId) {
+        return new Order(new Product("상품1", 1000, DiscountPolicy.NONE), 2);
+    }
+
+    @Override
+    public void pay(final int totalPrice, final String cardNumber) {
+        paymentGateway.excute(totalPrice, cardNumber);
+    }
+
+    @Override
+    public void save(Payment payment) {
+        paymentRepository.save(payment);
+    }
+}
+```
+
+3. PaymentGateway.java
+```java
+package com.example.tdd.payment;
+
+import org.springframework.stereotype.Component;
+
+@Component
+interface PaymentGateway {
+    void excute(int totalPrice, String cardNumber);
+}
+
+```
+
+4. ConsolePaymentGatewayImpl.java
+```java
+package com.example.tdd.payment;
+
+import org.springframework.stereotype.Component;
+
+@Component
+public class ConsolePaymentGatewayImpl implements PaymentGateway {
+
+    @Override
+    public void excute(int totalPrice, String cardNumber) {
+        System.out.println("결제 완료");
+    }
+}
+```
+
+5. PaymentRepository.java
+```java
+package com.example.tdd.payment;
+
+import org.springframework.stereotype.Repository;
+
+import java.util.HashMap;
+import java.util.Map;
+
+@Repository
+class PaymentRepository {
+    private Map<Long, Payment> persistence = new HashMap<>();
+    private Long sequence = 0L;
+
+    public void save(Payment payment) {
+        payment.assignId(++sequence);
+        persistence.put(payment.getId(), payment);
+    }
+}
+```
+
+6. PaymentServiceTest.java
+```java
+package com.example.tdd.payment;
+
+import com.example.tdd.order.OrderService;
+import com.example.tdd.order.OrderSteps;
+import com.example.tdd.product.ProductService;
+import com.example.tdd.product.ProductSteps;
+import org.junit.jupiter.api.Test;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.boot.test.context.SpringBootTest;
+
+@SpringBootTest
+public class PaymentServiceTest {
+
+  @Autowired
+  private ProductService productService;
+
+  @Autowired
+  private OrderService orderService;
+
+  @Autowired
+  private PaymentService paymentService;
+
+  @Test
+  void 상품주문() {
+    productService.addProduct(ProductSteps.상품등록요청_생성());
+    orderService.createOrder(OrderSteps.상품주문요청_생성());
+    final PaymentRequest request = PaymentSteps.주문결제요청_생성();
+
+    paymentService.payment(request);
+  }
 }
 ```
