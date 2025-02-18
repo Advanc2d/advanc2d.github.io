@@ -2849,3 +2849,107 @@ public class PaymentServiceTest {
   }
 }
 ```
+
+## **16. 결제 기능 API 테스트로 전환**
+
+### **16-1. PaymentSteps.java 메소드 추출**
+- PaymentServiceTest.java 내 주문결제요청 메소드 추출 및 이동
+```java
+package com.example.tdd.payment;
+
+import io.restassured.RestAssured;
+import io.restassured.response.ExtractableResponse;
+import io.restassured.response.Response;
+import org.springframework.http.MediaType;
+
+public class PaymentSteps {
+    public static PaymentRequest 주문결제요청_생성() {
+        Long orderId = 1L;
+        final String cardNumber = "1234-1234-1234-1234";
+        return new PaymentRequest(orderId, cardNumber);
+    }
+
+    static ExtractableResponse<Response> 주문결제요청(PaymentRequest request) {
+        return RestAssured.given().log().all()
+                .contentType(MediaType.APPLICATION_JSON_VALUE)
+                .body(request)
+                .when()
+                .post("/payments")
+                .then().log().all()
+                .extract();
+    }
+}
+
+```
+
+### **16-2. PaymentServiceTest.java -> PaymentApiTest.java 변경**
+- extends ApiTest.java
+- `@SpringBootTest` 어노테이션 제거
+- Service 제거
+- 코드 로직 변경
+```java
+package com.example.tdd.payment;
+
+import com.example.tdd.ApiTest;
+import com.example.tdd.order.OrderSteps;
+import com.example.tdd.product.ProductSteps;
+import io.restassured.response.ExtractableResponse;
+import io.restassured.response.Response;
+import org.junit.jupiter.api.Test;
+import org.springframework.boot.test.context.SpringBootTest;
+import org.springframework.http.HttpStatus;
+
+import static org.assertj.core.api.Assertions.assertThat;
+
+public class PaymentApiTest extends ApiTest {
+
+  @Test
+  void 상품주문() {
+    ProductSteps.상품등록요청(ProductSteps.상품등록요청_생성());
+    OrderSteps.상품주문요청(OrderSteps.상품주문요청_생성());
+    final PaymentRequest request = PaymentSteps.주문결제요청_생성();
+
+    final ExtractableResponse<Response> response = PaymentSteps.주문결제요청(request);
+
+    assertThat(response.statusCode()).isEqualTo(HttpStatus.OK.value());
+  }
+
+}
+```
+
+### **16-3. PaymentService.java 어노테이션 추가**
+- `@RestController, @RequestMapping, @PostMapping` 추가
+- 매핑 응답 변경
+```java
+package com.example.tdd.payment;
+
+import com.example.tdd.order.Order;
+import org.springframework.http.HttpStatus;
+import org.springframework.http.ResponseEntity;
+import org.springframework.web.bind.annotation.PostMapping;
+import org.springframework.web.bind.annotation.RequestBody;
+import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RestController;
+
+@RestController
+@RequestMapping("/payments")
+class PaymentService {
+  private final PaymentPort paymentPort;
+
+  PaymentService(PaymentPort paymentPort) {
+    this.paymentPort = paymentPort;
+  }
+
+  @PostMapping
+  public ResponseEntity<Void> payment(@RequestBody final PaymentRequest request) {
+    Order order = paymentPort.getOrder(request.orderId());
+
+    final Payment payment = new Payment(order, request.cardNumber());
+
+    paymentPort.pay(payment.getPrice(), payment.getCardNumber());
+    paymentPort.save(payment);
+
+    return ResponseEntity.status(HttpStatus.OK).build();
+  }
+}
+```
