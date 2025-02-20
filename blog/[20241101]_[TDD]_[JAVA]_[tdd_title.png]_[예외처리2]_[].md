@@ -2953,3 +2953,21 @@ class PaymentService {
   }
 }
 ```
+
+## **17. 결제 Test -> Main 클래스 이동 **
+1. ConsolePaymentGateway.java
+2. Payment.java
+3. PaymentAdapter.java
+4. PaymentGateway.java
+5. PaymentPort.java
+6. PaymentRepository.java
+7. PaymentRequest.java
+8. PaymentService.java
+
+![tdd_17.png](../img/tdd/tdd_17.png)
+
+![tdd_17-1.png](../img/tdd/tdd_17-1.png)
+
+![tdd_17-2.png](../img/tdd/tdd_17-2.png)
+
+## **18. 결제 JPA 적용**
