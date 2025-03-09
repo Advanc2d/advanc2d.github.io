@@ -2971,3 +2971,131 @@ class PaymentService {
 ![tdd_17-2.png](../img/tdd/tdd_17-2.png)
 
 ## **18. 결제 JPA 적용**
+### **18-1. PaymentRepository.java JPA로 변경**
+```java
+package com.example.tdd.payment;
+
+import org.springframework.data.jpa.repository.JpaRepository;
+
+interface PaymentRepository extends JpaRepository<Payment, Long> {
+}
+```
+
+### **18-2. PaymentService.java `@Transactional` 추가**
+```java
+package com.example.tdd.payment;
+
+import com.example.tdd.order.Order;
+import org.springframework.http.HttpStatus;
+import org.springframework.http.ResponseEntity;
+import org.springframework.transaction.annotation.Transactional;
+import org.springframework.web.bind.annotation.PostMapping;
+import org.springframework.web.bind.annotation.RequestBody;
+import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RestController;
+
+@RestController
+@RequestMapping("/payments")
+class PaymentService {
+  private final PaymentPort paymentPort;
+
+  PaymentService(PaymentPort paymentPort) {
+    this.paymentPort = paymentPort;
+  }
+
+  @PostMapping
+  @Transactional
+  public ResponseEntity<Void> payment(@RequestBody final PaymentRequest request) {
+    Order order = paymentPort.getOrder(request.orderId());
+
+    final Payment payment = new Payment(order, request.cardNumber());
+
+    paymentPort.pay(payment.getPrice(), payment.getCardNumber());
+    paymentPort.save(payment);
+
+    return ResponseEntity.status(HttpStatus.OK).build();
+  }
+}
+```
+
+### **18-3. Payment.java `@Entity, @OneToOne` 어노테이션 추가**
+- 테이블 Entity 어노테이션 추가
+- 연관관계 Entity OneToOne 추가
+
+```java
+package com.example.tdd.payment;
+
+import com.example.tdd.order.Order;
+import lombok.AccessLevel;
+import lombok.Getter;
+import lombok.NoArgsConstructor;
+import org.springframework.util.Assert;
+
+import javax.persistence.*;
+
+@Entity
+@Getter
+@NoArgsConstructor(access = AccessLevel.PROTECTED)
+class Payment {
+    @Id
+    @GeneratedValue(strategy = GenerationType.IDENTITY)
+    private Long id;
+
+    @OneToOne
+    private Order order;
+
+    private String cardNumber;
+
+
+    public Payment(Order order, String cardNumber) {
+        Assert.notNull(order, "주문은 필수입니다.");
+        Assert.hasText(cardNumber, "카드 번호는 필수입니다.");
+        this.order = order;
+        this.cardNumber = cardNumber;
+    }
+
+    public int getPrice() {
+        return order.getTotalPrice();
+    }
+}
+```
+
+### **18-4. PaymentAdpater.java**
+- OrderRepository 조회 하여 반환하도록 반영
+
+```java
+package com.example.tdd.payment;
+
+import com.example.tdd.order.Order;
+import com.example.tdd.order.OrderRepository;
+import org.springframework.stereotype.Component;
+
+@Component
+class PaymentAdapter implements PaymentPort {
+    private final PaymentGateway paymentGateway;
+    private final PaymentRepository paymentRepository;
+    private final OrderRepository orderRepository;
+
+    PaymentAdapter(PaymentGateway paymentGateway, PaymentRepository paymentRepository, OrderRepository orderRepository) {
+        this.paymentGateway = paymentGateway;
+        this.paymentRepository = paymentRepository;
+        this.orderRepository = orderRepository;
+    }
+
+    @Override
+    public Order getOrder(Long orderId) {
+        return orderRepository.findById(orderId)
+                .orElseThrow(() -> new IllegalArgumentException("주문이 존재하지 않습니다."));
+    }
+
+    @Override
+    public void pay(final int totalPrice, final String cardNumber) {
+        paymentGateway.excute(totalPrice, cardNumber);
+    }
+
+    @Override
+    public void save(Payment payment) {
+        paymentRepository.save(payment);
+    }
+}
+```
